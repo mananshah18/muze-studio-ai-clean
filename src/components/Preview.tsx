@@ -37,6 +37,7 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Chart Preview</title>
+            <link rel="stylesheet" href="/lib/muze.css">
             <style>
               body {
                 margin: 0;
@@ -95,8 +96,8 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
             <!-- Load D3.js first (Muze dependency) -->
             <script src="https://d3js.org/d3.v5.min.js"></script>
             
-            <!-- Load Muze from local file -->
-            <script src="/lib/muze.js"></script>
+            <!-- Load Muze from local file as a module -->
+            <script type="module" src="/lib/muze.js"></script>
           </head>
           <body>
             <div class="section-title">User Chart</div>
@@ -106,7 +107,10 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
             <div id="fallback-chart"></div>
             
             <div id="debug"></div>
-            <script>
+            
+            <script type="module">
+              import muze from "/lib/muze.js";
+
               // Simple debug function that writes to the debug div
               function debugLog(message, data) {
                 const debugEl = document.getElementById('debug');
@@ -127,276 +131,139 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
                 console.log(message, data);
               }
               
-              // Wait for everything to load
-              window.onload = function() {
-                debugLog('Window loaded', {});
+              debugLog('Window loaded', {});
+              
+              // Check if Muze is available
+              if (typeof muze === 'undefined') {
+                debugLog('ERROR: Muze library not loaded', {});
+                document.body.innerHTML = '<div class="error-container"><h2>Error: Muze library not loaded</h2><p>The Muze visualization library could not be loaded. Please check your internet connection and try again.</p></div>' + document.body.innerHTML;
+              } else {
+                debugLog('Muze library loaded', { type: typeof muze });
                 
-                // Check if Muze is available
-                if (typeof muze === 'undefined') {
-                  debugLog('ERROR: Muze library not loaded', {});
-                  document.body.innerHTML = '<div class="error-container"><h2>Error: Muze library not loaded</h2><p>The Muze visualization library could not be loaded. Please check your internet connection and try again.</p></div>' + document.body.innerHTML;
-                } else {
-                  debugLog('Muze library loaded', { type: typeof muze });
+                try {
+                  // Create rawMuze similar to reference implementation
+                  const rawMuze = muze;
+                  debugLog('rawMuze created', { type: typeof rawMuze });
                   
+                  // Initialize global Muze instance
+                  const muzeGlobalContext = rawMuze();
+                  const versionInfo = muzeGlobalContext.version || 'Unknown';
+                  debugLog('Muze version', versionInfo);
+                  
+                  const versionEl = document.createElement('div');
+                  versionEl.className = 'muze-version';
+                  versionEl.textContent = 'Muze v' + versionInfo;
+                  document.body.appendChild(versionEl);
+                  
+                  // Send version back to parent
+                  window.parent.postMessage({ type: 'muze-version', version: versionInfo }, '*');
+                  
+                  // Initialize Muze
                   try {
-                    // Create rawMuze similar to reference implementation
-                    const rawMuze = muze;
-                    debugLog('rawMuze created', { type: typeof rawMuze });
+                    debugLog('Creating fallback chart', {});
                     
-                    // Initialize global Muze instance
-                    const muzeGlobalContext = rawMuze();
-                    const versionInfo = muzeGlobalContext.version || 'Unknown';
-                    debugLog('Muze version', versionInfo);
+                    // Sample data for the fallback chart
+                    const fallbackData = [
+                      { Category: "A", Value: 30 },
+                      { Category: "B", Value: 70 },
+                      { Category: "C", Value: 50 }
+                    ];
                     
-                    const versionEl = document.createElement('div');
-                    versionEl.className = 'muze-version';
-                    versionEl.textContent = 'Muze v' + versionInfo;
-                    document.body.appendChild(versionEl);
+                    // Define schema
+                    const schema = [
+                      { name: "Category", type: "dimension" },
+                      { name: "Value", type: "measure", defAggFn: "sum" }
+                    ];
                     
-                    // Send version back to parent
-                    window.parent.postMessage({ type: 'muze-version', version: versionInfo }, '*');
+                    const { DataModel } = muzeGlobalContext;
+                    const formattedData = DataModel.loadDataSync(fallbackData, schema);
+                    let rootData = new DataModel(formattedData);
                     
-                    // Initialize Muze
+                    muzeGlobalContext
+                      .canvas()
+                      .rows(["Category"])
+                      .columns(["Value"])
+                      .layers([
+                        {
+                          mark: "bar"
+                        }
+                      ])
+                      .data(rootData)
+                      .mount("#fallback-chart");
+                    
+                    debugLog('Fallback chart rendered', { target: '#fallback-chart' });
+                    
+                    // Create the viz object with Muze and data functions
+                    window.viz = {
+                      muze: rawMuze,
+                      getDataFromSearchQuery: function() {
+                        try {
+                          debugLog('getDataFromSearchQuery called', {});
+                          
+                          // Sample data for ThoughtSpot-like format
+                          const data = [
+                            { "Category": "Furniture", "Total Sales": 1200 },
+                            { "Category": "Office Supplies", "Total Sales": 900 },
+                            { "Category": "Technology", "Total Sales": 1500 },
+                            { "Category": "Clothing", "Total Sales": 800 },
+                            { "Category": "Books", "Total Sales": 600 }
+                          ];
+                          
+                          debugLog('Sample data created', { rowCount: data.length });
+                          
+                          // Define schema in ThoughtSpot format
+                          const schema = [
+                            { name: "Category", type: "dimension" },
+                            { name: "Total Sales", type: "measure", defAggFn: "sum" }
+                          ];
+                          
+                          // Format data and create DataModel instance using rawMuze
+                          const formattedData = rawMuze.DataModel.loadDataSync(data, schema);
+                          const dm = new rawMuze.DataModel(formattedData);
+                          
+                          debugLog('DataModel created', { rowCount: data.length });
+                          return dm;
+                        } catch (error) {
+                          debugLog('Error in getDataFromSearchQuery', { 
+                            message: error.message,
+                            stack: error.stack
+                          });
+                          throw error;
+                        }
+                      }
+                    };
+                    
+                    // Make debugLog available globally
+                    window.debugLog = debugLog;
+                    
+                    // Execute the user's code
                     try {
-                      debugLog('Creating fallback chart', {});
+                      debugLog('Starting user code execution', {});
                       
-                      // Sample data for the fallback chart
-                      const fallbackData = [
-                        { Category: "A", Value: 30 },
-                        { Category: "B", Value: 70 },
-                        { Category: "C", Value: 50 }
-                      ];
+                      ${transformedCode}
                       
-                      // Define schema
-                      const schema = [
-                        { name: "Category", type: "dimension" },
-                        { name: "Value", type: "measure", defAggFn: "sum" }
-                      ];
-                      
-                      const DataModel = muzeGlobalContext.DataModel;
-                      const dm = new DataModel(fallbackData, schema);
-                      
-                      // Create a canvas with configuration similar to reference implementation
-                      const fallbackCanvas = muzeGlobalContext.canvas();
-                      
-                      // Configure canvas with additional options from reference implementation
-                      fallbackCanvas
-                        .config({
-                          interaction: {
-                            tooltip: { enabled: true },
-                            pan: { enabled: true },
-                            zoom: { enabled: true }
-                          },
-                          axes: {
-                            x: {
-                              showAxisName: true,
-                              tickFormat: (d) => d
-                            },
-                            y: {
-                              showAxisName: true,
-                              tickFormat: (d) => d
-                            }
-                          },
-                          legend: {
-                            color: {
-                              position: 'bottom',
-                              align: 'middle'
-                            }
-                          }
-                        })
-                        .rows(["Category"])
-                        .columns(["Value"])
-                        .layers([
-                          {
-                            mark: "bar",
-                            encoding: {
-                              color: { value: () => '#4CAF50' }
-                            }
-                          }
-                        ])
-                        .data(dm)
-                        .mount("#fallback-chart");
-                      
-                      // Add animation end event handler
-                      fallbackCanvas.once('animationEnd', () => {
-                        debugLog('Fallback chart animation completed', {});
+                      debugLog('User code execution completed', {});
+                    } catch (error) {
+                      debugLog('Error executing user code', { 
+                        message: error.message,
+                        stack: error.stack
                       });
                       
-                      // Add responsive handling
-                      handleChartDimensionSubscription('#fallback-chart', fallbackCanvas);
-                      
-                      debugLog('Fallback chart rendered', { target: '#fallback-chart' });
-                      
-                      // Create the viz object with enhanced Muze API wrapper
-                      window.viz = {
-                        muze: {
-                          // Core Muze properties from reference implementation
-                          DataStore: rawMuze.DataStore,
-                          DataModel: rawMuze.DataModel,
-                          version: rawMuze.version,
-                          SideEffects: rawMuze.SideEffects,
-                          ActionModel: rawMuze.ActionModel,
-                          layerFactory: rawMuze.layerFactory,
-                          Operators: rawMuze.Operators,
-                          Behaviours: rawMuze.Behaviours,
-                          utils: rawMuze.utils,
-                          Themes: rawMuze.Themes,
-                          
-                          // Canvas method with enhanced configuration
-                          canvas: (muzeContext) => {
-                            const resolvedContext = muzeContext || muzeGlobalContext;
-                            const canvas = resolvedContext.canvas();
-                            
-                            // Add default configuration
-                            canvas.config({
-                              interaction: {
-                                tooltip: { enabled: true },
-                                pan: { enabled: true },
-                                zoom: { enabled: true }
-                              },
-                              axes: {
-                                x: {
-                                  showAxisName: true,
-                                  tickFormat: (d) => d
-                                },
-                                y: {
-                                  showAxisName: true,
-                                  tickFormat: (d) => d
-                                }
-                              },
-                              legend: {
-                                color: {
-                                  position: 'bottom',
-                                  align: 'middle'
-                                }
-                              }
-                            });
-                            
-                            // Override mount method to add responsive handling
-                            const originalMountFn = canvas.mount.bind(canvas);
-                            canvas.mount = (...args) => {
-                              const result = originalMountFn(...args);
-                              if (args[0]) {
-                                try {
-                                  handleChartDimensionSubscription(args[0], canvas);
-                                } catch (e) {
-                                  debugLog('Error in responsive handling', e);
-                                }
-                              }
-                              return result;
-                            };
-                            
-                            return canvas;
-                          }
-                        },
-                        
-                        // Enhanced getDataFromSearchQuery function
-                        getDataFromSearchQuery: function() {
-                          try {
-                            debugLog('getDataFromSearchQuery called', {});
-                            
-                            // Sample data for ThoughtSpot-like format
-                            const data = [
-                              { "Category": "Furniture", "Total Sales": 1200 },
-                              { "Category": "Office Supplies", "Total Sales": 900 },
-                              { "Category": "Technology", "Total Sales": 1500 },
-                              { "Category": "Clothing", "Total Sales": 800 },
-                              { "Category": "Books", "Total Sales": 600 }
-                            ];
-                            
-                            // Define schema in ThoughtSpot format
-                            const schema = [
-                              { name: "Category", type: "dimension" },
-                              { name: "Total Sales", type: "measure", defAggFn: "sum" }
-                            ];
-                            
-                            // Format data and create DataModel instance using rawMuze
-                            const formattedData = rawMuze.DataModel.loadDataSync(data, schema);
-                            const dm = new rawMuze.DataModel(formattedData);
-                            
-                            debugLog('DataModel created', { rowCount: data.length });
-                            return dm;
-                          } catch (error) {
-                            debugLog('Error in getDataFromSearchQuery', { 
-                              message: error.message,
-                              stack: error.stack
-                            });
-                            throw error;
-                          }
-                        }
-                      };
-                      
-                      // Add responsive chart handling
-                      function handleChartDimensionSubscription(mountElem, canvas) {
-                        const canvasContainer = typeof mountElem === 'string' 
-                          ? document.querySelector(mountElem) 
-                          : mountElem;
-                          
-                        if (!canvasContainer) {
-                          debugLog('Chart container not found', { selector: mountElem });
-                          return;
-                        }
-                        
-                        // Set initial dimensions
-                        const setDimensions = () => {
-                          const width = canvasContainer.clientWidth;
-                          const height = canvasContainer.clientHeight;
-                          debugLog('Setting chart dimensions', { width, height });
-                          canvas.width(width);
-                          canvas.height(height);
-                        };
-                        
-                        // Set initial dimensions
-                        setDimensions();
-                        
-                        // Add resize observer if available
-                        if (window.ResizeObserver) {
-                          const resizeObserver = new ResizeObserver(() => {
-                            setDimensions();
-                          });
-                          
-                          resizeObserver.observe(canvasContainer);
-                          
-                          // Clean up on chart disposal
-                          canvas.on('afterDisposed', () => {
-                            resizeObserver.disconnect();
-                          });
-                        }
-                      }
-                      
-                      // Make functions available globally
-                      window.debugLog = debugLog;
-                      window.handleChartDimensionSubscription = handleChartDimensionSubscription;
-                      
-                      // Execute the user's code
-                      try {
-                        debugLog('Starting user code execution', {});
-                        
-                        ${transformedCode}
-                        
-                        debugLog('User code execution completed', {});
-                      } catch (error) {
-                        debugLog('Error executing user code', { 
-                          message: error.message,
-                          stack: error.stack
-                        });
-                        
-                        document.getElementById('chart').innerHTML = 
-                          '<div class="error-container">' + 
-                          '<h3>Error rendering chart:</h3>' + 
-                          '<pre>' + error.message + '</pre></div>';
-                      }
-                    } catch (fallbackError) {
-                      debugLog('Error rendering fallback chart', { 
-                        message: fallbackError.message,
-                        stack: fallbackError.stack
-                      });
+                      document.getElementById('chart').innerHTML = 
+                        '<div class="error-container">' + 
+                        '<h3>Error rendering chart:</h3>' + 
+                        '<pre>' + error.message + '</pre></div>';
                     }
-                  } catch (e) {
-                    debugLog('Error initializing Muze', e.message);
+                  } catch (fallbackError) {
+                    debugLog('Error rendering fallback chart', { 
+                      message: fallbackError.message,
+                      stack: fallbackError.stack
+                    });
                   }
+                } catch (e) {
+                  debugLog('Error initializing Muze', e.message);
                 }
-              };
+              }
             </script>
           </body>
         </html>
