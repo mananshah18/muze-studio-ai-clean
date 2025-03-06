@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Muze Library Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 20px;
+    }
+    #status {
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    #details {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Muze Library Test</h1>
+  <p>This page tests if the Muze library is properly loaded.</p>
+  
+  <div id="status">Checking Muze library...</div>
+  <div id="details"></div>
+  
+  <!-- Load D3.js first (Muze dependency) -->
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  
+  <!-- Try loading Muze with different paths -->
+  <script>
+    const statusEl = document.getElementById('status');
+    const detailsEl = document.getElementById('details');
+    
+    function updateStatus(success, message, details) {
+      statusEl.className = success ? 'success' : 'error';
+      statusEl.textContent = message;
+      
+      if (details) {
+        detailsEl.textContent = typeof details === 'object' ? JSON.stringify(details, null, 2) : details;
+      }
+    }
+    
+    function testMuze() {
+      // Check if D3 is loaded first
+      if (typeof d3 === 'undefined') {
+        updateStatus(false, 'Error: D3 library not loaded', 'D3 is required for Muze to work properly.');
+        return;
+      }
+      
+      updateStatus(true, 'D3 library loaded successfully: v' + d3.version, null);
+      
+      // Try to load Muze
+      const script = document.createElement('script');
+      script.src = '/lib/muze.js';
+      script.onload = function() {
+        if (typeof muze !== 'undefined') {
+          try {
+            const muzeEnv = muze();
+            updateStatus(
+              true, 
+              'Muze library loaded successfully!', 
+              {
+                version: muze.version || 'Unknown',
+                type: typeof muze,
+                hasCanvas: typeof muzeEnv.canvas === 'function',
+                hasDataModel: typeof muze.DataModel === 'function',
+                properties: Object.keys(muze)
+              }
+            );
+          } catch (e) {
+            updateStatus(false, 'Muze library loaded but failed to initialize', e.toString());
+          }
+        } else {
+          updateStatus(false, 'Script loaded but muze is undefined', 'The script was loaded but did not define the global muze object.');
+        }
+      };
+      
+      script.onerror = function() {
+        updateStatus(false, 'Failed to load Muze library from /lib/muze.js', 'The browser could not load the script. Check the network tab in developer tools for more details.');
+        
+        // Try alternative paths
+        const alternativePaths = [
+          './lib/muze.js',
+          '../lib/muze.js',
+          'lib/muze.js',
+          '/public/lib/muze.js'
+        ];
+        
+        let pathsChecked = '';
+        
+        alternativePaths.forEach(path => {
+          const testScript = document.createElement('script');
+          testScript.src = path;
+          pathsChecked += `Trying: ${path}\n`;
+          
+          testScript.onload = function() {
+            if (typeof muze !== 'undefined') {
+              updateStatus(true, `Muze library loaded successfully from ${path}!`, {
+                version: muze.version || 'Unknown',
+                path: path
+              });
+            }
+          };
+          
+          document.head.appendChild(testScript);
+        });
+        
+        detailsEl.textContent += '\n' + pathsChecked;
+      };
+      
+      document.head.appendChild(script);
+    }
+    
+    // Run the test when the page loads
+    window.onload = testMuze;
+  </script>
+</body>
+</html> 

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct Muze Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 20px;
+    }
+    #status {
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    #chart {
+      width: 100%;
+      height: 300px;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Direct Muze Library Test</h1>
+  <p>This page directly loads the Muze library and attempts to create a simple chart.</p>
+  
+  <div id="status">Loading Muze library...</div>
+  <div id="chart"></div>
+  
+  <!-- Load D3.js first (Muze dependency) -->
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  
+  <!-- Load our Muze wrapper script -->
+  <script src="/muze-wrapper.js"></script>
+  
+  <script>
+    const statusEl = document.getElementById('status');
+    
+    function updateStatus(success, message) {
+      statusEl.className = success ? 'success' : 'error';
+      statusEl.textContent = message;
+    }
+    
+    // Function to create the chart once Muze is loaded
+    function createChart() {
+      console.log("Creating chart with Muze");
+      
+      try {
+        // Initialize Muze
+        const env = muze();
+        console.log("Muze initialized:", env);
+        
+        // Sample data
+        const data = [
+          { Category: "A", Value: 30 },
+          { Category: "B", Value: 70 },
+          { Category: "C", Value: 50 }
+        ];
+        
+        // Define schema
+        const schema = [
+          { name: "Category", type: "dimension" },
+          { name: "Value", type: "measure", defAggFn: "sum" }
+        ];
+        
+        // Create DataModel
+        const DataModel = env.DataModel;
+        const formattedData = DataModel.loadDataSync(data, schema);
+        const dm = new DataModel(formattedData);
+        
+        // Create and configure chart
+        env
+          .canvas()
+          .rows(["Category"])
+          .columns(["Value"])
+          .data(dm)
+          .mount("#chart");
+        
+        console.log("Chart mounted");
+        updateStatus(true, 'Chart created successfully!');
+      } catch (error) {
+        console.error("Error creating chart:", error);
+        updateStatus(false, 'Error creating chart: ' + error.message);
+      }
+    }
+    
+    // Check if D3 is loaded
+    if (typeof d3 === 'undefined') {
+      updateStatus(false, 'Error: D3 library not loaded');
+    } else {
+      console.log("D3 loaded successfully:", d3.version);
+      
+      // Listen for the muze-loaded event
+      document.addEventListener('muze-loaded', function() {
+        console.log("Muze library loaded event received");
+        
+        // Check if Muze is loaded
+        if (typeof muze === 'undefined' || !muze) {
+          updateStatus(false, 'Error: Muze library not loaded');
+          return;
+        }
+        
+        console.log("Muze loaded successfully");
+        updateStatus(true, 'Muze library loaded successfully!');
+        
+        // Create the chart
+        createChart();
+      });
+      
+      // Listen for the muze-error event
+      document.addEventListener('muze-error', function(event) {
+        const error = event.detail;
+        console.error("Muze library failed to load:", error);
+        updateStatus(false, 'Error: Muze library failed to load: ' + (error ? error.message : "Unknown error"));
+      });
+      
+      // Check if Muze is already loaded
+      if (typeof muze !== 'undefined' && muze) {
+        console.log("Muze already available, creating chart");
+        updateStatus(true, 'Muze library already loaded!');
+        createChart();
+      } else {
+        console.log("Waiting for Muze to load...");
+      }
+    }
+  </script>
+</body>
+</html> 

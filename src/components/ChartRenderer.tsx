@@ -57,8 +57,8 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData 
           <title>Muze Chart</title>
           <!-- Load D3.js first (Muze dependency) -->
           <script src="https://d3js.org/d3.v5.min.js"></script>
-          <!-- Load Muze from local path (private library) -->
-          <script src="/lib/muze.js"></script>
+          <!-- Load our Muze wrapper script -->
+          <script src="/muze-wrapper.js"></script>
           <style>
             body {
               margin: 0;
@@ -198,24 +198,41 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData 
               debugLog("Fallback D3 chart created successfully");
             }
             
-            // Wait for everything to load
-            window.onload = function() {
-              debugLog("Window loaded");
+            // Listen for the muze-loaded event
+            document.addEventListener('muze-loaded', function() {
+              debugLog("Muze library loaded event received");
+              initializeChart();
+            });
+            
+            // Listen for the muze-error event
+            document.addEventListener('muze-error', function(event) {
+              const error = event.detail;
+              debugLog("ERROR: Muze library failed to load: " + (error ? error.message : "Unknown error"));
+              document.body.innerHTML = '<div class="error-container"><h2>Error: Muze library failed to load</h2>' +
+                '<p>The Muze visualization library could not be loaded. Error: ' + (error ? error.message : "Unknown error") + '</p></div>' + document.body.innerHTML;
+              window.parent.postMessage({ type: 'chart-error', message: "Muze library failed to load: " + (error ? error.message : "Unknown error") }, '*');
               
-              // Check if Muze is available
-              if (typeof muze === 'undefined') {
-                debugLog("ERROR: Muze library not loaded");
-                document.body.innerHTML = '<div class="error-container"><h2>Error: Muze library not loaded</h2><p>The Muze visualization library could not be loaded. This is a private library that should be available at /lib/muze.js.</p></div>' + document.body.innerHTML;
-                window.parent.postMessage({ type: 'chart-error', message: "Muze library not loaded" }, '*');
-                
-                // Create a fallback chart using D3
-                createFallbackChart();
-                return;
-              }
-              
-              debugLog("Muze library loaded successfully");
-              
+              // Create a fallback chart using D3
+              createFallbackChart();
+            });
+            
+            // Initialize the chart once Muze is loaded
+            function initializeChart() {
               try {
+                // Check if Muze is available
+                if (typeof muze === 'undefined' || !muze) {
+                  debugLog("ERROR: Muze library not loaded");
+                  document.body.innerHTML = '<div class="error-container"><h2>Error: Muze library not loaded</h2>' +
+                    '<p>The Muze visualization library could not be loaded.</p></div>' + document.body.innerHTML;
+                  window.parent.postMessage({ type: 'chart-error', message: "Muze library not loaded" }, '*');
+                  
+                  // Create a fallback chart using D3
+                  createFallbackChart();
+                  return;
+                }
+                
+                debugLog("Muze library loaded successfully");
+                
                 // Initialize global Muze instance
                 const rawMuze = muze;
                 debugLog("rawMuze created: " + (typeof rawMuze));
@@ -248,14 +265,44 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData 
                       const canvas = muzeGlobalContext.canvas();
                       debugLog("Canvas created: " + (typeof canvas));
                       
-                      // Add default configuration
+                      // Add enhanced configuration from reference implementation
                       canvas.config({
                         interaction: {
                           tooltip: { enabled: true },
                           pan: { enabled: true },
                           zoom: { enabled: true }
+                        },
+                        axes: {
+                          x: {
+                            showAxisName: true,
+                            tickFormat: (d) => d
+                          },
+                          y: {
+                            showAxisName: true,
+                            tickFormat: (d) => d
+                          }
+                        },
+                        legend: {
+                          color: {
+                            position: 'bottom',
+                            align: 'middle'
+                          }
                         }
                       });
+                      
+                      // Override mount method to add responsive handling
+                      const originalMountFn = canvas.mount.bind(canvas);
+                      canvas.mount = function(...args) {
+                        const result = originalMountFn(...args);
+                        if (args[0]) {
+                          try {
+                            handleChartDimensionSubscription(args[0], canvas);
+                          } catch (e) {
+                            debugLog("Error in responsive handling: " + e.message);
+                          }
+                        }
+                        return result;
+                      };
                       
                       return canvas;
                     }
@@ -264,12 +311,11 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData 
                   // Data helper function
                   getDataFromSearchQuery: function() {
                     debugLog("getDataFromSearchQuery called");
-                    // Use ThoughtSpot data if available, otherwise use sample data
-                    ${useThoughtSpotData 
-                      ? `debugLog("Using ThoughtSpot data");
-                         return ${JSON.stringify(thoughtSpotData)};` 
-                      : `debugLog("Using sample data");
-                         return [
+                    
+                    // Define data
+                    const data = ${useThoughtSpotData 
+                      ? `${JSON.stringify(thoughtSpotData)}` 
+                      : `[
                           { Year: 2020, Origin: 'USA', Horsepower: 200, 'Miles_per_Gallon': 25, Weight_in_lbs: 3000, Name: 'Car A', Maker: 'Ford' },
                           { Year: 2020, Origin: 'Japan', Horsepower: 180, 'Miles_per_Gallon': 30, Weight_in_lbs: 2800, Name: 'Car B', Maker: 'Toyota' },
                           { Year: 2020, Origin: 'Germany', Horsepower: 220, 'Miles_per_Gallon': 22, Weight_in_lbs: 3200, Name: 'Car C', Maker: 'BMW' },
@@ -279,10 +325,76 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData 
                           { Year: 2022, Origin: 'USA', Horsepower: 220, 'Miles_per_Gallon': 27, Weight_in_lbs: 2900, Name: 'Car G', Maker: 'Ford' },
                           { Year: 2022, Origin: 'Japan', Horsepower: 200, 'Miles_per_Gallon': 33, Weight_in_lbs: 2700, Name: 'Car H', Maker: 'Toyota' },
                           { Year: 2022, Origin: 'Germany', Horsepower: 240, 'Miles_per_Gallon': 24, Weight_in_lbs: 3100, Name: 'Car I', Maker: 'BMW' }
-                        ];`
+                        ]`
+                    };
+                    
+                    // Define schema with proper types
+                    const schema = [
+                      { name: "Year", type: "dimension" },
+                      { name: "Origin", type: "dimension" },
+                      { name: "Horsepower", type: "measure", defAggFn: "sum" },
+                      { name: "Miles_per_Gallon", type: "measure", defAggFn: "sum" },
+                      { name: "Weight_in_lbs", type: "measure", defAggFn: "sum" },
+                      { name: "Name", type: "dimension" },
+                      { name: "Maker", type: "dimension" }
+                    ];
+                    
+                    debugLog("Using ${useThoughtSpotData ? 'ThoughtSpot' : 'sample'} data with schema");
+                    
+                    try {
+                      // Format data using loadDataSync like in reference implementation
+                      const formattedData = rawMuze.DataModel.loadDataSync(data, schema);
+                      const dm = new rawMuze.DataModel(formattedData);
+                      debugLog("DataModel created successfully with " + data.length + " rows");
+                      return dm;
+                    } catch (error) {
+                      debugLog("Error creating DataModel: " + error.message);
+                      // Fallback to returning raw data
+                      return data;
                     }
                   }
                 };
+                
+                // Add responsive chart handling function
+                function handleChartDimensionSubscription(mountElem, canvas) {
+                  const canvasContainer = typeof mountElem === 'string' 
+                    ? document.querySelector(mountElem) 
+                    : mountElem;
+                    
+                  if (!canvasContainer) {
+                    debugLog("Chart container not found: " + mountElem);
+                    return;
+                  }
+                  
+                  // Set initial dimensions
+                  const setDimensions = () => {
+                    const width = canvasContainer.clientWidth;
+                    const height = canvasContainer.clientHeight;
+                    debugLog("Setting chart dimensions: " + width + "x" + height);
+                    canvas.width(width);
+                    canvas.height(height);
+                  };
+                  
+                  // Set initial dimensions
+                  setDimensions();
+                  
+                  // Add resize observer if available
+                  if (window.ResizeObserver) {
+                    const resizeObserver = new ResizeObserver(() => {
+                      setDimensions();
+                    });
+                    
+                    resizeObserver.observe(canvasContainer);
+                    
+                    // Clean up on chart disposal
+                    canvas.on('afterDisposed', () => {
+                      resizeObserver.disconnect();
+                    });
+                  }
+                }
+                
+                // Make function available globally
+                window.handleChartDimensionSubscription = handleChartDimensionSubscription;
 
                 try {
                   debugLog("Executing generated chart code");
@@ -312,7 +424,15 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData 
                 // Create a fallback chart using D3
                 createFallbackChart();
               }
-            };
+            }
+            
+            // Check if Muze is already loaded
+            if (typeof muze !== 'undefined' && muze) {
+              debugLog("Muze already available, initializing chart");
+              initializeChart();
+            } else {
+              debugLog("Waiting for Muze to load...");
+            }
           </script>
         </body>
       </html>
