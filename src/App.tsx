@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { generateChartCode } from './utils/openaiService'
 import { getAvailablePromptKeys, getCurrentPromptKey, setCurrentPromptKey } from './utils/promptSwitcher'
+import ChartRenderer from './components/ChartRenderer'
+import Split from 'split.js'
 import './index.css'
 
 function App() {
@@ -17,6 +19,16 @@ function App() {
     const keys = getAvailablePromptKeys();
     setPromptKeys(keys);
     setCurrentPrompt(getCurrentPromptKey());
+
+    // Initialize split.js for resizable panels
+    if (document.getElementById('code-panel') && document.getElementById('chart-panel')) {
+      Split(['#code-panel', '#chart-panel'], {
+        sizes: [50, 50],
+        minSize: [300, 300],
+        gutterSize: 10,
+        direction: 'horizontal',
+      });
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,7 +71,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
       <header className="bg-white dark:bg-gray-800 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col space-y-4">
@@ -102,36 +114,50 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             <p>{error}</p>
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold dark:text-white">Generated Chart Code</h2>
-            {chartCode && (
-              <button
-                onClick={handleCopyCode}
-                className={`px-3 py-1 rounded text-sm ${copySuccess 
-                  ? 'bg-green-500 text-white' 
-                  : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white'}`}
-              >
-                {copySuccess ? 'Copied!' : 'Copy Code'}
-              </button>
+        <div className="flex-1 flex split-container">
+          <div id="code-panel" className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 overflow-hidden">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold dark:text-white">Generated Chart Code</h2>
+              {chartCode && (
+                <button
+                  onClick={handleCopyCode}
+                  className={`px-3 py-1 rounded text-sm ${copySuccess 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white'}`}
+                >
+                  {copySuccess ? 'Copied!' : 'Copy Code'}
+                </button>
+              )}
+            </div>
+            {chartCode ? (
+              <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto h-[calc(100%-3rem)] text-sm relative">
+                <code>{chartCode}</code>
+              </pre>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400">
+                Enter a query above to generate chart code
+              </p>
             )}
           </div>
-          {chartCode ? (
-            <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto max-h-96 text-sm relative">
-              <code>{chartCode}</code>
-            </pre>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400">
-              Enter a query above to generate chart code
-            </p>
-          )}
+          
+          <div id="chart-panel" className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            {chartCode ? (
+              <ChartRenderer code={chartCode} />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Chart preview will appear here
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>

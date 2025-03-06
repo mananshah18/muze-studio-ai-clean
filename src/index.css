@@ -2,6 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Split.js styles */
+.split-container {
+  display: flex;
+  height: calc(100vh - 200px);
+  min-height: 400px;
+}
+
+.gutter {
+  background-color: #edf2f7;
+  background-repeat: no-repeat;
+  background-position: 50%;
+}
+
+.dark .gutter {
+  background-color: #2d3748;
+}
+
+.gutter.gutter-horizontal {
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+  cursor: col-resize;
+}
+
+#code-panel, #chart-panel {
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Make sure the iframe takes up the full height */
+iframe {
+  height: 100%;
+  width: 100%;
+  border: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .split-container {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  #code-panel, #chart-panel {
+    width: 100% !important;
+    height: 400px;
+    margin-bottom: 1rem;
+  }
+  
+  .gutter.gutter-horizontal {
+    display: none;
+  }
+}
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
