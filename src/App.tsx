@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { generateChartCode } from './utils/openaiService'
+import { getAvailablePromptKeys, getCurrentPromptKey, setCurrentPromptKey } from './utils/promptSwitcher'
 import './index.css'
 
 function App() {
@@ -8,6 +9,15 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [promptKeys, setPromptKeys] = useState<string[]>([])
+  const [currentPrompt, setCurrentPrompt] = useState('')
+
+  useEffect(() => {
+    // Get available prompt keys
+    const keys = getAvailablePromptKeys();
+    setPromptKeys(keys);
+    setCurrentPrompt(getCurrentPromptKey());
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,27 +51,54 @@ function App() {
     }
   }
 
+  const handlePromptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newPromptKey = e.target.value;
+    if (setCurrentPromptKey(newPromptKey)) {
+      setCurrentPrompt(newPromptKey);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <form onSubmit={handleSubmit} className="flex items-center">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Describe the chart you want to create..."
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Generating...' : 'Generate Chart'}
-            </button>
-          </form>
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Muze Studio AI</h1>
+              <div className="flex items-center space-x-2">
+                <label htmlFor="promptSelect" className="text-sm text-gray-700 dark:text-gray-300">
+                  Prompt Variation:
+                </label>
+                <select
+                  id="promptSelect"
+                  value={currentPrompt}
+                  onChange={handlePromptChange}
+                  className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  {promptKeys.map(key => (
+                    <option key={key} value={key}>{key}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <form onSubmit={handleSubmit} className="flex items-center">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Describe the chart you want to create..."
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Generating...' : 'Generate Chart'}
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 
