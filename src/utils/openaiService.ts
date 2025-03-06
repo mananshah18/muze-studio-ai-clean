@@ -4,12 +4,6 @@ import OpenAI from 'openai';
 import { SYSTEM_PROMPT, EXPERIMENTAL_PROMPTS } from './promptConfig';
 import { getCurrentPromptKey } from './promptSwitcher';
 
-// Import OpenAI types manually since we're using it in the browser
-interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
 // Get the current prompt from the EXPERIMENTAL_PROMPTS object
 // Change this to use different prompt variations
 const getCurrentPrompt = () => {
