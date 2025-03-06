@@ -97,19 +97,18 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
             <script src="https://d3js.org/d3.v5.min.js"></script>
             
             <!-- Load Muze from local file as a module -->
-            <script type="module" src="/lib/muze.js"></script>
-          </head>
-          <body>
-            <div class="section-title">User Chart</div>
-            <div id="chart"></div>
-            
-            <div class="section-title">Fallback Chart (Always Renders)</div>
-            <div id="fallback-chart"></div>
-            
-            <div id="debug"></div>
-            
             <script type="module">
-              import muze from "/lib/muze.js";
+              let muze;
+              try {
+                // Try to import muze from the library
+                const muzeModule = await import('/lib/muze.js');
+                muze = muzeModule.default || muzeModule;
+                console.log("Muze imported successfully:", muze);
+              } catch (error) {
+                console.error("Error importing Muze:", error);
+                // Set a global error that we can check later
+                window.muzeImportError = error;
+              }
 
               // Simple debug function that writes to the debug div
               function debugLog(message, data) {
@@ -135,8 +134,19 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
               
               // Check if Muze is available
               if (typeof muze === 'undefined') {
-                debugLog('ERROR: Muze library not loaded', {});
-                document.body.innerHTML = '<div class="error-container"><h2>Error: Muze library not loaded</h2><p>The Muze visualization library could not be loaded. Please check your internet connection and try again.</p></div>' + document.body.innerHTML;
+                let errorMessage = 'Muze library not loaded';
+                
+                // Check if we have a specific import error
+                if (window.muzeImportError) {
+                  errorMessage += ': ' + window.muzeImportError.message;
+                  debugLog('Muze import error details', { 
+                    message: window.muzeImportError.message,
+                    stack: window.muzeImportError.stack
+                  });
+                }
+                
+                debugLog('ERROR: ' + errorMessage, {});
+                document.body.innerHTML = '<div class="error-container"><h2>Error: Muze library not loaded</h2><p>' + errorMessage + '</p><p>Please check the browser console for more details.</p></div>' + document.body.innerHTML;
               } else {
                 debugLog('Muze library loaded', { type: typeof muze });
                 
@@ -175,23 +185,115 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
                       { name: "Value", type: "measure", defAggFn: "sum" }
                     ];
                     
-                    const { DataModel } = muzeGlobalContext;
-                    const formattedData = DataModel.loadDataSync(fallbackData, schema);
-                    let rootData = new DataModel(formattedData);
-                    
-                    muzeGlobalContext
-                      .canvas()
-                      .rows(["Category"])
-                      .columns(["Value"])
-                      .layers([
-                        {
-                          mark: "bar"
+                    try {
+                      // Check if DataModel exists
+                      if (!muzeGlobalContext.DataModel) {
+                        throw new Error('DataModel is not available on the muze context');
+                      }
+                      
+                      // Create DataModel with proper error handling
+                      let rootData;
+                      try {
+                        // Check if loadDataSync method exists
+                        if (typeof muzeGlobalContext.DataModel.loadDataSync === 'function') {
+                          const formattedData = muzeGlobalContext.DataModel.loadDataSync(fallbackData, schema);
+                          rootData = new muzeGlobalContext.DataModel(formattedData);
+                        } else {
+                          // Fallback to direct constructor
+                          rootData = new muzeGlobalContext.DataModel(fallbackData);
                         }
-                      ])
-                      .data(rootData)
-                      .mount("#fallback-chart");
+                      } catch (dataModelError) {
+                        debugLog('Error creating DataModel for fallback chart', { 
+                          message: dataModelError.message 
+                        });
+                        // Create a simple D3 fallback chart instead
+                        createD3FallbackChart();
+                        return;
+                      }
+                      
+                      // Create and mount the chart
+                      try {
+                        muzeGlobalContext
+                          .canvas()
+                          .rows(["Category"])
+                          .columns(["Value"])
+                          .layers([
+                            {
+                              mark: "bar"
+                            }
+                          ])
+                          .data(rootData)
+                          .mount("#fallback-chart");
+                        
+                        debugLog('Fallback chart rendered', { target: '#fallback-chart' });
+                      } catch (chartError) {
+                        debugLog('Error mounting fallback chart', { 
+                          message: chartError.message 
+                        });
+                        // Create a simple D3 fallback chart instead
+                        createD3FallbackChart();
+                      }
+                    } catch (error) {
+                      debugLog('Error initializing fallback chart', { 
+                        message: error.message 
+                      });
+                      // Create a simple D3 fallback chart instead
+                      createD3FallbackChart();
+                    }
                     
-                    debugLog('Fallback chart rendered', { target: '#fallback-chart' });
+                    // Simple D3 fallback chart function
+                    function createD3FallbackChart() {
+                      debugLog('Creating D3 fallback chart', {});
+                      try {
+                        if (typeof d3 === 'undefined') {
+                          debugLog('D3 not available for fallback chart', {});
+                          return;
+                        }
+                        
+                        const width = 300;
+                        const height = 200;
+                        const margin = { top: 20, right: 20, bottom: 30, left: 40 };
+                        
+                        const svg = d3.select("#fallback-chart").append("svg")
+                          .attr("width", width)
+                          .attr("height", height);
+                          
+                        const g = svg.append("g")
+                          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                          
+                        const x = d3.scaleBand()
+                          .rangeRound([0, width - margin.left - margin.right])
+                          .padding(0.1)
+                          .domain(fallbackData.map(d => d.Category));
+                          
+                        const y = d3.scaleLinear()
+                          .rangeRound([height - margin.top - margin.bottom, 0])
+                          .domain([0, d3.max(fallbackData, d => d.Value)]);
+                          
+                        g.append("g")
+                          .attr("transform", "translate(0," + (height - margin.top - margin.bottom) + ")")
+                          .call(d3.axisBottom(x));
+                          
+                        g.append("g")
+                          .call(d3.axisLeft(y).ticks(5));
+                          
+                        g.selectAll(".bar")
+                          .data(fallbackData)
+                          .enter().append("rect")
+                          .attr("class", "bar")
+                          .attr("x", d => x(d.Category))
+                          .attr("y", d => y(d.Value))
+                          .attr("width", x.bandwidth())
+                          .attr("height", d => height - margin.top - margin.bottom - y(d.Value))
+                          .attr("fill", "steelblue");
+                          
+                        debugLog('D3 fallback chart created', {});
+                      } catch (d3Error) {
+                        debugLog('Error creating D3 fallback chart', { 
+                          message: d3Error.message 
+                        });
+                      }
+                    }
                     
                     // Create the viz object with Muze and data functions
                     window.viz = {
@@ -218,11 +320,34 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
                           ];
                           
                           // Format data and create DataModel instance using rawMuze
-                          const formattedData = rawMuze.DataModel.loadDataSync(data, schema);
-                          const dm = new rawMuze.DataModel(formattedData);
-                          
-                          debugLog('DataModel created', { rowCount: data.length });
-                          return dm;
+                          try {
+                            // Check if DataModel exists
+                            if (!rawMuze.DataModel) {
+                              throw new Error('DataModel is not available on the muze object');
+                            }
+                            
+                            // Check if loadDataSync method exists
+                            if (typeof rawMuze.DataModel.loadDataSync !== 'function') {
+                              debugLog('loadDataSync not available, using direct DataModel constructor', {});
+                              const dm = new rawMuze.DataModel(data);
+                              return dm;
+                            }
+                            
+                            // Use loadDataSync if available
+                            const formattedData = rawMuze.DataModel.loadDataSync(data, schema);
+                            const dm = new rawMuze.DataModel(formattedData);
+                            
+                            debugLog('DataModel created', { rowCount: data.length });
+                            return dm;
+                          } catch (dataModelError) {
+                            debugLog('Error creating DataModel, returning raw data', { 
+                              message: dataModelError.message,
+                              stack: dataModelError.stack
+                            });
+                            
+                            // Fallback to returning raw data
+                            return data;
+                          }
                         } catch (error) {
                           debugLog('Error in getDataFromSearchQuery', { 
                             message: error.message,
@@ -265,6 +390,15 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
                 }
               }
             </script>
+          </head>
+          <body>
+            <div class="section-title">User Chart</div>
+            <div id="chart"></div>
+            
+            <div class="section-title">Fallback Chart (Always Renders)</div>
+            <div id="fallback-chart"></div>
+            
+            <div id="debug"></div>
           </body>
         </html>
       `;
