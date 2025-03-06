@@ -1,0 +1,27 @@
+{
+  "name": "@thoughtspot/dyoc",
+  "sourceRoot": "js/ts-packages/dyoc/src",
+  "projectType": "library",
+  "targets": {
+    "install": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["pnpm run nx-install"],
+        "cwd": "js/ts-packages/dyoc",
+        "outputPath": [
+          "js/ts-packages/dyoc/lib",
+          "js/ts-packages/dyoc/custom-typings",
+          "js/ts-packages/dyoc/src/services/generated"
+        ]
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["pnpm run lint"],
+        "cwd": "js/ts-packages/dyoc"
+      }
+    }
+  },
+  "tags": ["scope:web", "scope:mobile", "type:UI"]
+}

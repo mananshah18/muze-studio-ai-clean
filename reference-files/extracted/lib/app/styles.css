@@ -1,0 +1,258 @@
+:root {
+    --font-family: 'optimo-plain', 'helvetica neue', 'helvetica', 'arial', 'sans-serif';
+}
+
+body {
+    font-family: var(--font-family);
+    color: #1D232F;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    border: 1px solid #EAEDF2;
+    overflow: hidden;
+}
+
+#app, #app * {
+    box-sizing: border-box;
+}
+
+button {
+    font-family: var(--font-family);
+}
+
+.button {
+    border-radius: 18px;
+    background: #EAEDF2;
+    border: none;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+}
+
+.button:hover {
+    background: #d3d9e3;
+}
+
+.button.active {
+    background-color: #2770EF;
+    color: #FFFFFF;
+}
+
+.button.active:hover {
+    background-color: #1956c0;
+}
+
+.section {
+    height: 100%;
+    padding: 16px;
+}
+
+.section.gutter {
+    margin: 0;
+    padding: 0;
+    position: relative;
+}
+
+.section.gutter .middle-border {
+    position: absolute;
+    height: 100%;
+    width: 0px;
+    top: 0;
+    left: 50%;
+    border-left: 1px solid #EAEDF2;
+}
+
+/* .section.gutter .resize-icon {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+} */
+
+.section.gutter:hover {
+    cursor: col-resize;
+}
+
+.section.gutter:hover .middle-border {
+    border-left: 2px solid #2770EF;
+}
+
+.section.preview {
+    position: relative;
+}
+
+.section.preview #preview-iframe-container {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.preview iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.section.editors {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    padding: 13px 16px 14px 13px;
+}
+
+.editors .actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.actions .tab-actions {
+    background-color: #EAEDF2;
+    padding: 2px;
+    border-radius: 32px;
+}
+
+.tab-actions .tab-button {
+    padding: 4px 16px;
+    background-color: transparent;
+    color: #1D232F;
+    border: none;
+    cursor: pointer;
+    outline: none;
+    border-radius: 14px;
+    transition: all 0.1s ease;
+}
+
+.tab-actions .tab-button.active {
+    background-color: #FFFFFF;
+    color: #2E75F0;
+}
+
+.editors-container {
+    flex: 1;
+    border: 1px solid #CED4DA;
+    position: relative;
+}
+
+.editors-container .editor {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.editors-container .editor.active {
+    z-index: 2;
+}
+
+.docs-container {
+    padding: 8px;
+    border-top: 1px solid #CED4DA;
+    border-left: 1px solid #CED4DA;
+    border-top-left-radius: 8px;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: white;
+}
+
+.docs-container a {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    color: #2770EF;
+    text-decoration: none;
+    font-size: 12px;
+}
+
+.docs-container img {
+    height: 14px;
+    margin-bottom: 2px;
+}
+
+.code-icon-btn {
+    cursor: pointer;
+}
+
+.code-icon-btn img {
+    height: 28px;
+}
+
+.open-editors-btn {
+    position: absolute;
+    top: 13px;
+    right: 0;
+    display: none;
+}
+
+.preview-only-view .section.preview {
+    flex: 1;
+}
+
+.preview-only-view .section.editors {
+    display: none;
+}
+
+.preview-only-view .section.gutter {
+    display: none;
+}
+
+.preview-only-view .open-editors-btn {
+    display: block;
+    right: 16px;
+    top: 16px;
+}
+
+.livaboard-view#app  {
+    border: none;
+}
+
+.livaboard-view .section.preview {
+    flex: 1;
+}
+
+.livaboard-view .section.editors {
+    display: none;
+}
+
+.livaboard-view .section.gutter {
+    display: none;
+}
+
+.livaboard-view .open-editors-btn {
+    display: none;
+}
+
+.printmode-view#app  {
+    border: none;
+}
+
+.printmode-view .section.preview {
+    flex: 1;
+}
+
+.printmode-view .section.editors {
+    display: none;
+}
+
+.printmode-view .section.gutter {
+    display: none;
+}
+
+.printmode-view .open-editors-btn {
+    display: none;
+}

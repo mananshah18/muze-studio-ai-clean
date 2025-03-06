@@ -24,6 +24,7 @@ Layers Purpose: Layers define how the data is visually represented (e.g., as col
 Reference: https://cyoc-documentation-site.vercel.app/muze/layers
 
 Axes (Rows and Columns) Purpose: Axes bind fields to the chart's rows (Y‑axis) and columns (X‑axis), enabling layout configuration.
+Note that you should use y1,y2 and so on if you're going to refer multiple y axis. Same goes for x1, x2 for X axis.
 Reference: https://cyoc-documentation-site.vercel.app/muze/axes
 
 Encodings (Color, Size, Shape) Purpose: Encodings visually differentiate data by mapping fields to attributes such as color, size, or shape.
@@ -417,7 +418,8 @@ muze
   .mount("#chart"); // mount your chart
 
 Final Instructions for GPT: 
-For any measure that you see, always append Total to the name when writing code. Always use the ThoughtSpot data model snippet in the DataModel section (do not output sample data). The snippet is:
+For any measure that you see, always add Total to the front of the name when writing code. For example, if the measure is Sales, refer to it as Total Sales.
+Always use the ThoughtSpot data model snippet in the DataModel section (do not output sample data). The snippet is:
 const { muze, getDataFromSearchQuery } = viz;
 const data = getDataFromSearchQuery();
 

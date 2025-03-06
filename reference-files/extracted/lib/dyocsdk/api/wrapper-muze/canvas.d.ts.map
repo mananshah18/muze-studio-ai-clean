@@ -1,0 +1,1 @@
+{"version":3,"file":"canvas.d.ts","sourceRoot":"","sources":["../../../../src/dyocsdk/api/wrapper-muze/canvas.ts"],"names":[],"mappings":"AAIA,OAAO,EAAE,QAAQ,EAAW,MAAM,gBAAgB,CAAC;AACnD,OAAO,EAAE,iBAAiB,EAAE,MAAM,UAAU,CAAC;AAE7C,wBAAgB,cAAc,CAAC,GAAG,EAAE,iBAAiB;2BAItB,OAAO;EAoErC;AAED,wBAAgB,gCAAgC,CAAC,SAAS,EAAE,WAAW,GAAG,MAAM,EAAE,UAAU,EAAE,QAAQ,QAqCrG"}

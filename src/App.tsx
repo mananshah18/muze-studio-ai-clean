@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { generateChartCode } from './utils/openaiService'
 import { getAvailablePromptKeys, getCurrentPromptKey, setCurrentPromptKey } from './utils/promptSwitcher'
 import ChartRenderer from './components/ChartRenderer'
+import DataSourceSwitcher from './components/DataSourceSwitcher'
 import Split from 'split.js'
 import './index.css'
 
@@ -13,6 +14,7 @@ function App() {
   const [copySuccess, setCopySuccess] = useState(false)
   const [promptKeys, setPromptKeys] = useState<string[]>([])
   const [currentPrompt, setCurrentPrompt] = useState('')
+  const [useThoughtSpotData, setUseThoughtSpotData] = useState(false)
 
   useEffect(() => {
     // Get available prompt keys
@@ -70,6 +72,10 @@ function App() {
     }
   };
 
+  const handleDataSourceToggle = (useThoughtSpot: boolean) => {
+    setUseThoughtSpotData(useThoughtSpot);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
       <header className="bg-white dark:bg-gray-800 shadow">
@@ -77,20 +83,26 @@ function App() {
           <div className="flex flex-col space-y-4">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">Muze Studio AI</h1>
-              <div className="flex items-center space-x-2">
-                <label htmlFor="promptSelect" className="text-sm text-gray-700 dark:text-gray-300">
-                  Prompt Variation:
-                </label>
-                <select
-                  id="promptSelect"
-                  value={currentPrompt}
-                  onChange={handlePromptChange}
-                  className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                >
-                  {promptKeys.map(key => (
-                    <option key={key} value={key}>{key}</option>
-                  ))}
-                </select>
+              <div className="flex items-center space-x-4">
+                <DataSourceSwitcher 
+                  useThoughtSpotData={useThoughtSpotData} 
+                  onToggle={handleDataSourceToggle} 
+                />
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="promptSelect" className="text-sm text-gray-700 dark:text-gray-300">
+                    Prompt Variation:
+                  </label>
+                  <select
+                    id="promptSelect"
+                    value={currentPrompt}
+                    onChange={handlePromptChange}
+                    className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    {promptKeys.map(key => (
+                      <option key={key} value={key}>{key}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             <form onSubmit={handleSubmit} className="flex items-center">
@@ -149,7 +161,7 @@ function App() {
           
           <div id="chart-panel" className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
             {chartCode ? (
-              <ChartRenderer code={chartCode} />
+              <ChartRenderer code={chartCode} useThoughtSpotData={useThoughtSpotData} />
             ) : (
               <div className="flex items-center justify-center h-full">
                 <p className="text-gray-500 dark:text-gray-400">

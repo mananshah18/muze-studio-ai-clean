@@ -1,0 +1,1 @@
+{"version":3,"file":"version-map.d.ts","sourceRoot":"","sources":["../../src/playground-data/version-map.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,kBAAkB,EAAE,MAAM,2BAA2B,CAAC;AAK/D,OAAO,EAAE,cAAc,EAAE,iBAAiB,EAAE,MAAM,SAAS,CAAC;AAE5D,eAAO,MAAM,2BAA2B,EAAE,GAAG,CACzC,iBAAiB,EACjB,CAAC,GAAG,EAAE,kBAAkB,KAAK,OAAO,CAAC,cAAc,CAAC,CA0CtD,CAAC"}

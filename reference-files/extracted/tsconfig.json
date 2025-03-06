@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "declaration": true,
+    "declarationMap": true,
+    "moduleResolution": "node",
+    "lib": [
+      "esnext",
+      "es2020",
+      "es2019",
+      "es2018",
+      "es2017",
+      "es2016",
+      "es5",
+      "es6",
+      "dom"
+    ],
+    // "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "removeComments": true,
+    "resolveJsonModule": true,
+    "rootDir": "src",
+    "outDir": "lib",
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "jsx": "react",
+    "incremental": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "custom-typings/**/*.d.ts"],
+  "exclude": ["lib", "dist", "node_modules", "cjs"]
+}
