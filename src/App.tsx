@@ -9,6 +9,7 @@ import './index.css'
 function App() {
   const [query, setQuery] = useState('')
   const [chartCode, setChartCode] = useState('')
+  const [editedCode, setEditedCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
@@ -69,6 +70,7 @@ function App() {
       addDebugLog(`Code preview: ${codePreview}`);
       
       setChartCode(code)
+      setEditedCode(code) // Initialize edited code with generated code
       setApiStatus('success')
       addDebugLog("Chart code set successfully");
     } catch (err) {
@@ -83,10 +85,16 @@ function App() {
     }
   }
 
+  const handleRunCode = () => {
+    addDebugLog("Running edited code");
+    // We're using editedCode for rendering now
+    addDebugLog(`Code length: ${editedCode.length} characters`);
+  }
+
   const handleCopyCode = () => {
-    if (chartCode) {
+    if (editedCode) {
       addDebugLog("Copying chart code to clipboard");
-      navigator.clipboard.writeText(chartCode)
+      navigator.clipboard.writeText(editedCode)
         .then(() => {
           setCopySuccess(true)
           addDebugLog("Code copied successfully");
@@ -190,22 +198,35 @@ function App() {
         <div className="flex-1 flex split-container">
           <div id="code-panel" className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 overflow-hidden">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold dark:text-white">Generated Chart Code</h2>
-              {chartCode && (
-                <button
-                  onClick={handleCopyCode}
-                  className={`px-3 py-1 rounded text-sm ${copySuccess 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white'}`}
-                >
-                  {copySuccess ? 'Copied!' : 'Copy Code'}
-                </button>
-              )}
+              <h2 className="text-xl font-semibold dark:text-white">Chart Code</h2>
+              <div className="flex space-x-2">
+                {editedCode && (
+                  <>
+                    <button
+                      onClick={handleRunCode}
+                      className="px-3 py-1 rounded text-sm bg-green-500 hover:bg-green-600 text-white"
+                    >
+                      Run
+                    </button>
+                    <button
+                      onClick={handleCopyCode}
+                      className={`px-3 py-1 rounded text-sm ${copySuccess 
+                        ? 'bg-green-500 text-white' 
+                        : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white'}`}
+                    >
+                      {copySuccess ? 'Copied!' : 'Copy Code'}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             {chartCode ? (
-              <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto h-[calc(100%-3rem)] text-sm relative">
-                <code>{chartCode}</code>
-              </pre>
+              <textarea
+                value={editedCode}
+                onChange={(e) => setEditedCode(e.target.value)}
+                className="bg-gray-100 dark:bg-gray-900 p-4 rounded w-full h-[calc(100%-3rem)] text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                spellCheck="false"
+              />
             ) : (
               <p className="text-gray-500 dark:text-gray-400">
                 Enter a query above to generate chart code
@@ -214,8 +235,8 @@ function App() {
           </div>
           
           <div id="chart-panel" className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-            {chartCode ? (
-              <ChartRenderer code={chartCode} useThoughtSpotData={useThoughtSpotData} />
+            {editedCode ? (
+              <ChartRenderer code={editedCode} useThoughtSpotData={useThoughtSpotData} />
             ) : (
               <div className="flex items-center justify-center h-full">
                 <p className="text-gray-500 dark:text-gray-400">
