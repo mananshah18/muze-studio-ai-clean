@@ -422,7 +422,8 @@ muze
   .data(data)
   .mount("#chart"); // mount your chart
 
-Final Instructions for GPT: Always use the ThoughtSpot data model snippet in the DataModel section (do not output sample data). The snippet is:
+Final Instructions for GPT: 
+For any measure that you see, always append Total to the name when writing code. Always use the ThoughtSpot data model snippet in the DataModel section (do not output sample data). The snippet is:
 const { muze, getDataFromSearchQuery } = viz;
 const data = getDataFromSearchQuery();
 
