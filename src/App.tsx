@@ -7,6 +7,7 @@ function App() {
   const [chartCode, setChartCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [copySuccess, setCopySuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -14,6 +15,7 @@ function App() {
 
     setIsLoading(true)
     setError(null)
+    setCopySuccess(false)
 
     try {
       const code = await generateChartCode(query)
@@ -23,6 +25,19 @@ function App() {
       console.error(err)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleCopyCode = () => {
+    if (chartCode) {
+      navigator.clipboard.writeText(chartCode)
+        .then(() => {
+          setCopySuccess(true)
+          setTimeout(() => setCopySuccess(false), 2000)
+        })
+        .catch(err => {
+          console.error('Failed to copy code:', err)
+        })
     }
   }
 
@@ -58,9 +73,21 @@ function App() {
         )}
 
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4 dark:text-white">Generated Chart Code</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold dark:text-white">Generated Chart Code</h2>
+            {chartCode && (
+              <button
+                onClick={handleCopyCode}
+                className={`px-3 py-1 rounded text-sm ${copySuccess 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white'}`}
+              >
+                {copySuccess ? 'Copied!' : 'Copy Code'}
+              </button>
+            )}
+          </div>
           {chartCode ? (
-            <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto max-h-96 text-sm">
+            <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded overflow-auto max-h-96 text-sm relative">
               <code>{chartCode}</code>
             </pre>
           ) : (
