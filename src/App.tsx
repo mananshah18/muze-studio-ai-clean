@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { generateChartCode } from './utils/openaiService'
 import { getAvailablePromptKeys, getCurrentPromptKey, setCurrentPromptKey } from './utils/promptSwitcher'
 import ChartRenderer from './components/ChartRenderer'
@@ -15,65 +15,113 @@ function App() {
   const [promptKeys, setPromptKeys] = useState<string[]>([])
   const [currentPrompt, setCurrentPrompt] = useState('')
   const [useThoughtSpotData, setUseThoughtSpotData] = useState(false)
+  const [debugMessages, setDebugMessages] = useState<string[]>([])
+  const [apiStatus, setApiStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+
+  // Add debug log function
+  const addDebugLog = useCallback((message: string) => {
+    console.log(`[App Debug] ${message}`);
+    setDebugMessages(prev => [...prev, `${new Date().toISOString().substr(11, 8)}: ${message}`]);
+  }, []);
 
   useEffect(() => {
-    // Get available prompt keys
-    const keys = getAvailablePromptKeys();
-    setPromptKeys(keys);
-    setCurrentPrompt(getCurrentPromptKey());
+    try {
+      // Get available prompt keys
+      const keys = getAvailablePromptKeys();
+      setPromptKeys(keys);
+      setCurrentPrompt(getCurrentPromptKey());
+      addDebugLog("App initialized with prompt keys: " + keys.join(", "));
 
-    // Initialize split.js for resizable panels
-    if (document.getElementById('code-panel') && document.getElementById('chart-panel')) {
-      Split(['#code-panel', '#chart-panel'], {
-        sizes: [50, 50],
-        minSize: [300, 300],
-        gutterSize: 10,
-        direction: 'horizontal',
-      });
+      // Initialize split.js for resizable panels
+      if (document.getElementById('code-panel') && document.getElementById('chart-panel')) {
+        Split(['#code-panel', '#chart-panel'], {
+          sizes: [50, 50],
+          minSize: [300, 300],
+          gutterSize: 10,
+          direction: 'horizontal',
+        });
+        addDebugLog("Split panels initialized");
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      addDebugLog(`Error during initialization: ${errorMessage}`);
+      setError(`Error during initialization: ${errorMessage}`);
     }
-  }, []);
+  }, [addDebugLog]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!query.trim()) return
 
+    addDebugLog(`Submitting query: "${query}"`);
     setIsLoading(true)
     setError(null)
     setCopySuccess(false)
+    setApiStatus('loading')
 
     try {
+      addDebugLog("Generating chart code from OpenAI");
       const code = await generateChartCode(query)
+      addDebugLog(`Received code from OpenAI (${code.length} characters)`);
+      
+      // Log a preview of the code
+      const codePreview = code.length > 100 ? code.substring(0, 100) + "..." : code;
+      addDebugLog(`Code preview: ${codePreview}`);
+      
       setChartCode(code)
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate chart code')
+      setApiStatus('success')
+      addDebugLog("Chart code set successfully");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      addDebugLog(`Error generating chart code: ${errorMessage}`);
+      setError(errorMessage || 'Failed to generate chart code')
+      setApiStatus('error')
       console.error(err)
     } finally {
       setIsLoading(false)
+      addDebugLog("Loading state set to false");
     }
   }
 
   const handleCopyCode = () => {
     if (chartCode) {
+      addDebugLog("Copying chart code to clipboard");
       navigator.clipboard.writeText(chartCode)
         .then(() => {
           setCopySuccess(true)
+          addDebugLog("Code copied successfully");
           setTimeout(() => setCopySuccess(false), 2000)
         })
         .catch(err => {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          addDebugLog(`Failed to copy code: ${errorMessage}`);
           console.error('Failed to copy code:', err)
         })
     }
   }
 
   const handlePromptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newPromptKey = e.target.value;
-    if (setCurrentPromptKey(newPromptKey)) {
-      setCurrentPrompt(newPromptKey);
+    try {
+      const newPromptKey = e.target.value;
+      addDebugLog(`Changing prompt to: ${newPromptKey}`);
+      if (setCurrentPromptKey(newPromptKey)) {
+        setCurrentPrompt(newPromptKey);
+        addDebugLog("Prompt changed successfully");
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      addDebugLog(`Error changing prompt: ${errorMessage}`);
     }
   };
 
   const handleDataSourceToggle = (useThoughtSpot: boolean) => {
-    setUseThoughtSpotData(useThoughtSpot);
+    try {
+      addDebugLog(`Toggling data source to: ${useThoughtSpot ? 'ThoughtSpot' : 'Sample'}`);
+      setUseThoughtSpotData(useThoughtSpot);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      addDebugLog(`Error toggling data source: ${errorMessage}`);
+    }
   };
 
   return (
@@ -133,6 +181,12 @@ function App() {
           </div>
         )}
 
+        {apiStatus === 'loading' && (
+          <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+            <p>Generating chart code... This may take a few moments.</p>
+          </div>
+        )}
+
         <div className="flex-1 flex split-container">
           <div id="code-panel" className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 overflow-hidden">
             <div className="flex justify-between items-center mb-4">
@@ -170,6 +224,14 @@ function App() {
               </div>
             )}
           </div>
+        </div>
+        
+        {/* App Debug Panel */}
+        <div className="mt-4 bg-black bg-opacity-80 text-green-400 p-2 text-xs font-mono rounded max-h-32 overflow-y-auto">
+          <div className="font-bold mb-1">App Debug Log:</div>
+          {debugMessages.map((message, index) => (
+            <div key={index}>{message}</div>
+          ))}
         </div>
       </main>
     </div>

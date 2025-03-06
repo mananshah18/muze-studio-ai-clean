@@ -9,24 +9,44 @@ interface ChartRendererProps {
 const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData = false }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const [iframeHtml, setIframeHtml] = useState<string>('');
+
+  // Add debug log function
+  const addDebugLog = (message: string) => {
+    console.log(`[ChartRenderer Debug] ${message}`);
+    setDebugLog(prev => [...prev, message]);
+  };
 
   useEffect(() => {
-    if (!code || !iframeRef.current) return;
+    if (!code) {
+      addDebugLog("No code available");
+      return;
+    }
 
-    // Create a sandbox iframe to render the chart
-    const iframe = iframeRef.current;
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    
-    if (!iframeDoc) return;
+    addDebugLog("Starting chart rendering process");
+    addDebugLog(`Using ThoughtSpot data: ${useThoughtSpotData}`);
 
     // Reset error state
     setError(null);
 
     // Get ThoughtSpot data if enabled
-    const thoughtSpotData = useThoughtSpotData 
-      ? transformDataForMuze(mockContext.getChartModel())
-      : null;
+    let thoughtSpotData = null;
+    try {
+      if (useThoughtSpotData) {
+        addDebugLog("Transforming ThoughtSpot data");
+        thoughtSpotData = transformDataForMuze(mockContext.getChartModel());
+        addDebugLog(`Transformed data has ${thoughtSpotData.length} rows`);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      addDebugLog(`Error transforming ThoughtSpot data: ${errorMessage}`);
+      setError(`Error transforming ThoughtSpot data: ${errorMessage}`);
+      return;
+    }
 
+    addDebugLog("Generating HTML content for iframe");
+    
     // Generate the HTML content for the iframe
     const htmlContent = `
       <!DOCTYPE html>
@@ -66,20 +86,54 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData 
               font-size: 12px;
               font-weight: bold;
             }
+            .debug-log {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              background-color: rgba(0,0,0,0.8);
+              color: #00ff00;
+              font-family: monospace;
+              font-size: 12px;
+              padding: 10px;
+              max-height: 150px;
+              overflow-y: auto;
+              z-index: 1000;
+            }
           </style>
         </head>
         <body>
           <div id="chart"></div>
           ${useThoughtSpotData ? '<div class="thoughtspot-badge">ThoughtSpot Data</div>' : ''}
+          <div id="debug-log" class="debug-log"></div>
           <script>
+            // Debug logging function
+            function debugLog(message) {
+              console.log("[Chart Debug] " + message);
+              const logElement = document.getElementById('debug-log');
+              if (logElement) {
+                const logEntry = document.createElement('div');
+                logEntry.textContent = new Date().toISOString().substr(11, 8) + ": " + message;
+                logElement.appendChild(logEntry);
+                logElement.scrollTop = logElement.scrollHeight;
+              }
+              // Send log to parent
+              window.parent.postMessage({ type: 'chart-debug', message: message }, '*');
+            }
+
+            debugLog("Chart script started");
+            
             // Data helper function
             const viz = {
               muze: window.muze,
               getDataFromSearchQuery: function() {
+                debugLog("getDataFromSearchQuery called");
                 // Use ThoughtSpot data if available, otherwise use sample data
                 ${useThoughtSpotData 
-                  ? `return ${JSON.stringify(thoughtSpotData)};` 
-                  : `return [
+                  ? `debugLog("Using ThoughtSpot data");
+                     return ${JSON.stringify(thoughtSpotData)};` 
+                  : `debugLog("Using sample data");
+                     return [
                       { Year: 2020, Origin: 'USA', Horsepower: 200, 'Miles_per_Gallon': 25, Weight_in_lbs: 3000, Name: 'Car A', Maker: 'Ford' },
                       { Year: 2020, Origin: 'Japan', Horsepower: 180, 'Miles_per_Gallon': 30, Weight_in_lbs: 2800, Name: 'Car B', Maker: 'Toyota' },
                       { Year: 2020, Origin: 'Germany', Horsepower: 220, 'Miles_per_Gallon': 22, Weight_in_lbs: 3200, Name: 'Car C', Maker: 'BMW' },
@@ -95,33 +149,49 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData 
             };
 
             try {
+              debugLog("Executing generated chart code");
+              // Log the code being executed
+              debugLog("Code: " + \`${code.replace(/`/g, '\\`')}\`);
+              
               // Execute the generated code
               ${code}
+              
+              debugLog("Chart code executed successfully");
             } catch (error) {
+              const errorMessage = error.message || 'Unknown error';
+              debugLog("Error executing chart code: " + errorMessage);
               console.error('Error executing chart code:', error);
-              document.getElementById('chart').innerHTML = '<div class="error-container">Error rendering chart: ' + error.message + '</div>';
-              window.parent.postMessage({ type: 'chart-error', message: error.message }, '*');
+              document.getElementById('chart').innerHTML = '<div class="error-container">Error rendering chart: ' + errorMessage + '</div>';
+              window.parent.postMessage({ type: 'chart-error', message: errorMessage }, '*');
             }
           </script>
         </body>
       </html>
     `;
 
-    // Set the content of the iframe
-    iframeDoc.open();
-    iframeDoc.write(htmlContent);
-    iframeDoc.close();
+    addDebugLog("Setting iframe content");
+    
+    // Instead of directly manipulating the iframe document, use srcdoc
+    setIframeHtml(htmlContent);
+    addDebugLog("Iframe content set via srcdoc");
 
     // Listen for error messages from the iframe
     const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'chart-error') {
-        setError(event.data.message);
+      if (event.data) {
+        if (event.data.type === 'chart-error') {
+          addDebugLog(`Received error from iframe: ${event.data.message}`);
+          setError(event.data.message);
+        } else if (event.data.type === 'chart-debug') {
+          addDebugLog(`Iframe: ${event.data.message}`);
+        }
       }
     };
 
+    addDebugLog("Adding message event listener");
     window.addEventListener('message', handleMessage);
 
     return () => {
+      addDebugLog("Cleaning up event listener");
       window.removeEventListener('message', handleMessage);
     };
   }, [code, useThoughtSpotData]);
@@ -138,7 +208,14 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ code, useThoughtSpotData 
         title="Chart Preview"
         className="w-full h-full border-none"
         sandbox="allow-scripts"
+        srcDoc={iframeHtml}
       />
+      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-80 text-green-400 p-2 text-xs font-mono max-h-32 overflow-y-auto">
+        <div className="font-bold mb-1">Debug Log:</div>
+        {debugLog.map((log, index) => (
+          <div key={index}>{log}</div>
+        ))}
+      </div>
     </div>
   );
 };
