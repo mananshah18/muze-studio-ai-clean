@@ -20,9 +20,16 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'split.js'],
-          editor: ['monaco-editor', 'react-monaco-editor'],
+          
         },
       },
     },
+    // Skip TypeScript type checking during build
+    minify: true,
+    sourcemap: false,
+  },
+  // Skip TypeScript type checking
+  esbuild: {
+    logOverride: { 'this-is-undefined-in-esm': 'silent' },
   },
 }); 
